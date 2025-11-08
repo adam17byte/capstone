@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav.dart';
+import 'chat_room_page.dart';
 
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
@@ -7,54 +8,85 @@ class ChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chats = [
-      {'name': 'Ahmad Imam', 'message': 'Hai, tukang saya perbaiki bocor'},
-      {'name': 'Budi', 'message': 'Siap, kapan bisa datang?'},
+      {'name': 'Ahmad Imam', 'message': 'Hai, tukang saya perbaiki bocor', 'time': '18:30'},
+      {'name': 'Budi', 'message': 'Siap, kapan bisa datang?', 'time': '19:00'},
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chat'), backgroundColor: const Color(0xFFFF9800)),
+      backgroundColor: Colors.grey.shade100,
+      appBar: AppBar(
+        title: const Text('Chat'),
+        backgroundColor: const Color(0xFFFF9800),
+        titleTextStyle: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.w600),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(children: [
-          const TextField(decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari tukang...')),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView.separated(
-              itemBuilder: (context, i) {
-                final c = chats[i];
-                return ListTile(
-                  leading: const CircleAvatar(backgroundColor: Colors.grey),
-                  title: Text(c['name']!),
-                  subtitle: Text(c['message']!),
-                  onTap: () {
-                    // buka chat detail (dummy)
-                    showModalBottomSheet(context: context, builder: (_) {
-                      return SizedBox(
-                        height: 360,
-                        child: Column(children: [
-                          AppBar(title: Text(c['name']!), backgroundColor: const Color(0xFFFF9800)),
-                          Expanded(child: ListView(children: const [
-                            ListTile(title: Text('Ahmad'), subtitle: Text('Halo, saya datang jam 10')),
-                            ListTile(title: Text('Kamu'), subtitle: Text('Oke, terima kasih')),
-                          ])),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(children: [
-                              Expanded(child: TextField(decoration: const InputDecoration(hintText: 'Ketik pesan...'))),
-                              IconButton(icon: const Icon(Icons.send, color: Color(0xFFFF9800)), onPressed: () => Navigator.pop(context))
-                            ]),
-                          )
-                        ]),
-                      );
-                    });
-                  },
-                );
-              },
-              separatorBuilder: (_, __) => const Divider(),
-              itemCount: chats.length,
+        child: Column(
+          children: [
+            // Search bar
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Cari tukang...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
             ),
-          )
-        ]),
+            const SizedBox(height: 12),
+
+            // Daftar chat
+            Expanded(
+              child: ListView.separated(
+                itemCount: chats.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final c = chats[index];
+                  return ListTile(
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.orange,
+                      child: Icon(Icons.person, color: Colors.white),
+                    ),
+                    title: Text(
+                      c['name']!,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      c['message']!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                    trailing: Text(
+                      c['time']!,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    tileColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onTap: () {
+                      // pindah ke halaman room chat
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatRoomPage(
+                            chatName: c['name']!
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: const BottomNav(currentIndex: 2),
     );
