@@ -11,37 +11,18 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFF9800),
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         elevation: 0,
 
-leading: Padding(
-  padding: const EdgeInsets.only(left: 12),
-  child: Container(
-    width: 42,
-    height: 42,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: Colors.white,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.orange.withOpacity(0.3),
-          blurRadius: 4,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: ClipOval(
-      child: Image.asset(
-        'assets/images/logotukang.jpeg',
-        fit: BoxFit.cover,
-      ),
-    ),
-  ),
-),
-
-        title: const Text(
-          'Teman Tukang',
-          style: TextStyle(fontSize: 20, color: Colors.white),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 30),
+          child: Transform.scale(
+            scale: 2.5, // 🔹 ubah angka ini untuk memperbesar (misal 1.5x)
+            child: Image.asset(
+              'assets/images/logo_temantukang.png',
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
 

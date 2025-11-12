@@ -140,7 +140,7 @@ class _ProfilPageState extends State<ProfilPage> {
           ],
         ),
       ),
-      bottomNavigationBar: const BottomNav(currentIndex: 3),
+      bottomNavigationBar: const BottomNav(currentIndex: 4),
     );
   }
 }

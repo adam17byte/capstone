@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../pages/home_page.dart';
 import 'register_page.dart';
-import 'forgot_password_page.dart'; // Tambahkan ini
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -46,16 +46,13 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.construction, size: 100, color: Color(0xFFFF9800)),
-              const SizedBox(height: 16),
-              const Text(
-                'Teman Tukang',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFFF9800),
-                ),
+              // ✅ Ganti Icon jadi gambar logo
+              Image.asset(
+                'assets/images/logo_temantukang.png', // pastikan path sesuai di pubspec.yaml
+                width: 250,
+                height: 250,
               ),
+
               const SizedBox(height: 8),
               const Text(
                 'Masuk untuk melanjutkan',
@@ -114,7 +111,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
 
-              // Pesan error
               if (error.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),

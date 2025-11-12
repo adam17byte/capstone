@@ -27,6 +27,7 @@ class RiwayatPage extends StatelessWidget {
         title: const Text('Riwayat Pesanan'),
         titleTextStyle: const TextStyle(fontSize: 20, color: Colors.white),
         backgroundColor: const Color(0xFFFF9800),
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
       ),
       body: ListView.builder(

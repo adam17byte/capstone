@@ -88,7 +88,7 @@ class ChatPage extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const BottomNav(currentIndex: 2),
+      bottomNavigationBar: const BottomNav(currentIndex: 3),
     );
   }
 }
