@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api.dart';
 import '../pages/home_page.dart';
 import 'register_page.dart';
-import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,23 +14,47 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+
   String error = '';
+  bool isLoading = false;
 
-  Future<void> login() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString('email');
-    final savedPass = prefs.getString('password');
+  Future<void> doLogin() async {
+    if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+      setState(() => error = "Email dan password wajib diisi");
+      return;
+    }
 
-    if (emailController.text == savedEmail && passwordController.text == savedPass) {
-      await prefs.setBool('isLoggedIn', true);
+    setState(() {
+      isLoading = true;
+      error = '';
+    });
+
+    final result = await Api.login(
+      emailController.text.trim(),
+      passwordController.text.trim(),
+    );
+
+    if (result["status"] == "success") {
+      final user = result["user"];
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool("isLoggedIn", true);
+      await prefs.setInt("userId", user["id_users"]);
+      await prefs.setString("username", user["username"]);
+      await prefs.setString("email", user["email"]);
+      await prefs.setString("role", user["role"]);
+
       if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomePage()),
       );
     } else {
-      setState(() => error = 'Email atau password salah');
+      setState(() => error = result["message"]);
     }
+
+    setState(() => isLoading = false);
   }
 
   @override
@@ -46,124 +70,87 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ✅ Ganti Icon jadi gambar logo
               Image.asset(
-                'assets/images/logo_temantukang.png', // pastikan path sesuai di pubspec.yaml
-                width: 250,
-                height: 250,
+                "assets/images/logo_temantukang.png",
+                width: 200,
+                height: 200,
               ),
+              const SizedBox(height: 20),
 
-              const SizedBox(height: 8),
-              const Text(
-                'Masuk untuk melanjutkan',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-              const SizedBox(height: 40),
-
-              // Input Email
               TextField(
                 controller: emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFFFF9800)),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                decoration: input("Email", Icons.email_outlined),
               ),
               const SizedBox(height: 16),
 
-              // Input Password
               TextField(
                 controller: passwordController,
                 obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFFF9800)),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // Tombol Lupa Password
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
-                    );
-                  },
-                  child: const Text(
-                    'Lupa Kata Sandi?',
-                    style: TextStyle(color: Color(0xFFFF9800)),
-                  ),
-                ),
+                decoration: input("Password", Icons.lock_outline),
               ),
 
               if (error.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(error, style: const TextStyle(color: Colors.red)),
                 ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
 
-              // Tombol Login
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF9800),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
+                  onPressed: isLoading ? null : doLogin,
+                  style: orangeButton(),
+                  child: isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Login",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
                 ),
               ),
 
               const SizedBox(height: 16),
 
-              // Link ke Register
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Belum punya akun? "),
-                  GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const RegisterPage()),
-                    ),
-                    child: const Text(
-                      "Daftar sekarang",
-                      style: TextStyle(
-                        color: Color(0xFFFF9800),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RegisterPage()),
+                ),
+                child: const Text(
+                  "Belum punya akun? Daftar",
+                  style: TextStyle(
+                    color: Color(0xFFFF9800),
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  InputDecoration input(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: const Color(0xFFFF9800)),
+      filled: true,
+      fillColor: Colors.grey.shade100,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
+  ButtonStyle orangeButton() {
+    return ElevatedButton.styleFrom(
+      backgroundColor: const Color(0xFFFF9800),
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 }

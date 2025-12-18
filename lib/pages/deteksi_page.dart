@@ -1,8 +1,8 @@
 import 'dart:io' as io;
-import 'dart:typed_data';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:image/image.dart' as img;
 import '../widgets/bottom_nav.dart';
 import 'hasil_deteksi_page.dart';
 
@@ -14,168 +14,245 @@ class DeteksiPage extends StatefulWidget {
 }
 
 class _DeteksiPageState extends State<DeteksiPage> {
-  io.File? _imageFile;
-  Uint8List? _webImage;
   final ImagePicker _picker = ImagePicker();
 
+  io.File? _imageFile;
+  Interpreter? _interpreter;
+
+  bool _isModelLoaded = false;
+  bool _isDetecting = false;
+
+  int _inputSize = 224;
+  final List<String> _labels = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadModel();
+  }
+
+  Future<void> _loadModel() async {
+    try {
+      final labelData = await DefaultAssetBundle.of(
+        context,
+      ).loadString('assets/models/labels.txt');
+
+      _labels
+        ..clear()
+        ..addAll(
+          labelData.split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty),
+        );
+
+      _interpreter = await Interpreter.fromAsset('assets/models/best.tflite');
+
+      final inputShape = _interpreter!.getInputTensor(0).shape;
+      final outputShape = _interpreter!.getOutputTensor(0).shape;
+
+      if (inputShape.length == 4) {
+        _inputSize = inputShape[1];
+      }
+
+      if (outputShape[1] != _labels.length) {
+        throw Exception("Label tidak cocok dengan output model");
+      }
+
+      _isModelLoaded = true;
+    } catch (_) {
+      _isModelLoaded = false;
+    }
+  }
+
   Future<void> _pickImage() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
     if (picked != null) {
-      if (kIsWeb) {
-        // kalau di web, simpan dalam bentuk bytes
-        final bytes = await picked.readAsBytes();
-        setState(() {
-          _webImage = bytes;
-        });
-      } else {
-        // kalau di Android/iOS, simpan sebagai File
-        setState(() {
-          _imageFile = io.File(picked.path);
-        });
+      setState(() {
+        _imageFile = io.File(picked.path);
+      });
+    }
+  }
+
+  Future<void> _detectImage() async {
+    if (!_isModelLoaded || _imageFile == null || _isDetecting) return;
+
+    setState(() => _isDetecting = true);
+
+    try {
+      final bytes = await _imageFile!.readAsBytes();
+      final image = img.decodeImage(bytes);
+      if (image == null) throw Exception("Gagal decode gambar");
+
+      final resized = img.copyResize(
+        image,
+        width: _inputSize,
+        height: _inputSize,
+      );
+
+      final input = List.generate(
+        1,
+        (_) => List.generate(
+          _inputSize,
+          (y) => List.generate(_inputSize, (x) {
+            final p = resized.getPixel(x, y);
+            return [p.r / 255, p.g / 255, p.b / 255];
+          }),
+        ),
+      );
+
+      final output = List.generate(1, (_) => List.filled(_labels.length, 0.0));
+
+      _interpreter!.run(input, output);
+
+      final scores = output[0];
+      int bestIndex = 0;
+      double bestScore = scores[0];
+
+      for (int i = 1; i < scores.length; i++) {
+        if (scores[i] > bestScore) {
+          bestScore = scores[i];
+          bestIndex = i;
+        }
+      }
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => HasilDeteksiPage(
+            imageFile: _imageFile!,
+            hasilLabel: _labels[bestIndex],
+            confidence: bestScore,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Terjadi kesalahan saat deteksi")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isDetecting = false);
       }
     }
   }
 
-  void _deteksiGambar() {
-    // pastikan gambar sudah dipilih
-    if ((!kIsWeb && _imageFile == null) || (kIsWeb && _webImage == null)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Wajib memilih gambar terlebih dahulu!'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    // navigasi ke halaman hasil deteksi
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => HasilDeteksiPage(
-          imageFile: _imageFile,
-          webImage: _webImage,
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    _interpreter?.close();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool canDetect = _imageFile != null && !_isDetecting;
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text('Deteksi'),
-        backgroundColor: const Color(0xFFFF9800),
-        titleTextStyle: const TextStyle(
-          fontSize: 20,
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
+        title: const Text("Deteksi"),
+        titleTextStyle: const TextStyle(fontSize: 20, color: Colors.white),
+        backgroundColor: Colors.orange,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                )
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  'Silakan unggah gambar di bawah ini:',
-                  style: TextStyle(fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ImagePreview(imageFile: _imageFile),
+            const Spacer(),
 
-                // Kotak Choose File
-                InkWell(
-                  onTap: _pickImage,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.orange,
-                            borderRadius: BorderRadius.circular(6),
+            // Pilih / Ubah Gambar
+            ElevatedButton(
+              onPressed: _pickImage,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: Text(
+                _imageFile == null ? "Pilih Gambar" : "Ubah Gambar",
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Deteksi Button
+            IgnorePointer(
+              ignoring: !canDetect,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                child: ElevatedButton(
+                  onPressed: _detectImage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: canDetect
+                        ? Colors.orange
+                        : Colors.grey.shade300,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: canDetect ? 2 : 0,
+                  ),
+                  child: _isDetecting
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
-                          child: const Text(
-                            'Choose File',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        )
+                      : const Text(
+                          "Deteksi",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            (!kIsWeb && _imageFile != null)
-                                ? _imageFile!.path.split('/').last
-                                : (kIsWeb && _webImage != null)
-                                    ? 'Gambar terpilih'
-                                    : 'No file chosen',
-                            style: const TextStyle(color: Colors.grey),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
-
-                const SizedBox(height: 24),
-
-                // Tombol Deteksi
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _deteksiGambar,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'Deteksi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
       bottomNavigationBar: const BottomNav(currentIndex: 2),
+    );
+  }
+}
+
+class _ImagePreview extends StatelessWidget {
+  final io.File? imageFile;
+
+  const _ImagePreview({this.imageFile});
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageFile == null) {
+      return Container(
+        height: 300,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: const Text(
+          "Belum ada gambar",
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.file(
+        imageFile!,
+        height: 300,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      ),
     );
   }
 }

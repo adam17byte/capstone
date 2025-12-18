@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "152566724840",
+    "project_id": "teman-tukang-c342e",
+    "storage_bucket": "teman-tukang-c342e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:152566724840:android:2bf33fdeedd05df3e4715d",
+        "android_client_info": {
+          "package_name": "com.example.capstone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA48LG03LfH8F9wI4I1taJgp9OLrtEU_gw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

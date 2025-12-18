@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api.dart';
 import 'login_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -10,173 +10,201 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final usernameController = TextEditingController();
+  final namaController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  String error = '';
 
-  Future<void> register() async {
-    // Validasi input kosong
-    if (usernameController.text.isEmpty ||
+  String errorMessage = '';
+  bool isLoading = false;
+
+  Future<void> doRegister() async {
+    // STEP 1: VALIDASI LOKAL
+    if (namaController.text.isEmpty ||
         emailController.text.isEmpty ||
         passwordController.text.isEmpty) {
-      setState(() => error = 'Semua field harus diisi');
+      _showError("❌ Semua field harus diisi");
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('username', usernameController.text);
-    await prefs.setString('email', emailController.text);
-    await prefs.setString('password', passwordController.text);
+    if (!emailController.text.contains('@')) {
+      _showError("❌ Format email tidak valid");
+      return;
+    }
 
-    if (!mounted) return;
+    print('🚀 MENGIRIM REGISTER...'); // DEBUG PRINT
+    print('Nama: ${namaController.text}');
+    print('Email: ${emailController.text}');
+
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+
+    try {
+      var result = await Api.register(
+        namaController.text,
+        emailController.text,
+        passwordController.text,
+      );
+
+      print('✅ RESPONSE DITERIMA: $result'); // DEBUG PRINT
+
+      if (result['status'] == 'success') {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✅ Registrasi berhasil! Silakan login."),
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      } else {
+        // TAMPILKAN ERROR DARI SERVER
+        _showError(
+          "❌ ${result['message'] ?? 'Gagal mendaftar'} (Status: ${result['status']})",
+        );
+      }
+    } catch (e) {
+      print('🔥 ERROR TERJEBAK: $e'); // DEBUG PRINT
+      _showError("❌ Koneksi gagal: ${e.toString()}");
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  void _showError(String message) {
+    print('⚠ ERROR DITAMPILKAN: $message'); // DEBUG PRINT
+    setState(() {
+      errorMessage = message;
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Registrasi berhasil! Silakan login.')),
-    );
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5), // PERPANJANG DURASI
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Daftar"),
+        backgroundColor: const Color(0xFFFF9800),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: SizedBox(
-          height: screenHeight,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo / Header
-              const Icon(Icons.app_registration,
-                  size: 100, color: Color(0xFFFF9800)),
-              const SizedBox(height: 16),
-              const Text(
-                'Daftar Akun Baru',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFFF9800),
-                ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.app_registration,
+              size: 90,
+              color: Color(0xFFFF9800),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Daftar Akun Baru",
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFFF9800),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Silakan isi data di bawah ini',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-              const SizedBox(height: 40),
+            ),
+            const SizedBox(height: 30),
 
-              // Input Username
-              TextField(
-                controller: usernameController,
-                decoration: InputDecoration(
-                  labelText: 'Username',
-                  prefixIcon: const Icon(Icons.person_outline,
-                      color: Color(0xFFFF9800)),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
+            _buildTextField(
+              namaController,
+              "Nama Lengkap",
+              Icons.person_outline,
+            ),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              emailController,
+              "Email",
+              Icons.email_outlined,
+              TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              passwordController,
+              "Password",
+              Icons.lock_outline,
+              null,
+              true,
+            ),
+
+            // TAMPILKAN ERROR MESSAGE DI UI
+            if (errorMessage.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade300),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Input Email
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email_outlined,
-                      color: Color(0xFFFF9800)),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Input Password
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock_outline,
-                      color: Color(0xFFFF9800)),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Pesan Error
-              if (error.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child:
-                      Text(error, style: const TextStyle(color: Colors.red)),
-                ),
-
-              const SizedBox(height: 20),
-
-              // Tombol Daftar
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: register,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF9800),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Daftar',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
+                child: Text(
+                  errorMessage,
+                  style: TextStyle(color: Colors.red.shade700, fontSize: 14),
+                  textAlign: TextAlign.center,
                 ),
               ),
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-              // Tombol kembali ke login
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("Sudah punya akun? "),
-                  GestureDetector(
-                    onTap: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
-                    ),
-                    child: const Text(
-                      "Kembali ke Login",
-                      style: TextStyle(
-                        color: Color(0xFFFF9800),
-                        fontWeight: FontWeight.bold,
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : doRegister,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF9800),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Daftar",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
-                    ),
-                  ),
-                ],
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon, [
+    TextInputType? keyboardType,
+    bool obscureText = false,
+  ]) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: const Color(0xFFFF9800)),
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
       ),
     );
