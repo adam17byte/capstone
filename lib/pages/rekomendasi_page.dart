@@ -1,264 +1,223 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav.dart';
-import 'profil_tukang_page.dart';
-import 'chat_room_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api.dart';
+import '../models/tukang.dart';
+import 'form_pesanan_page.dart';
 
-class RekomendasiPage extends StatelessWidget {
-  const RekomendasiPage({super.key});
+class RekomendasiPage extends StatefulWidget {
+  final String jenisKerusakan;
+
+  const RekomendasiPage({super.key, required this.jenisKerusakan});
+
+  @override
+  State<RekomendasiPage> createState() => _RekomendasiPageState();
+}
+
+class _RekomendasiPageState extends State<RekomendasiPage> {
+  bool isLoading = true;
+  String errorMessage = "";
+  List<Tukang> tukangList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchRekomendasi();
+  }
+
+  Future<void> fetchRekomendasi() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt');
+
+      if (token == null || token.isEmpty) {
+        setState(() {
+          errorMessage = "Token tidak ditemukan. Silakan login ulang.";
+          isLoading = false;
+        });
+        return;
+      }
+
+      final result = await Api.getRekomendasi(
+        jenisKerusakan: widget.jenisKerusakan, // contoh: "Retak Dinding"
+        token: token,
+      );
+
+      if (!mounted) return;
+
+      if (result["status"] == "success") {
+        final List data = result["data"] ?? [];
+        setState(() {
+          tukangList = data.map((e) => Tukang.fromJson(e)).toList();
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage = result["message"] ?? "Gagal memuat rekomendasi";
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        errorMessage = "Terjadi kesalahan: $e";
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final tukangList = [
-      {'nama': 'Budi Santoso', 'keahlian': 'Pengecatan & Plafon', 'rating': 4},
-      {'nama': 'Agung Saputra', 'keahlian': 'Plester Tembok', 'rating': 4},
-      {'nama': 'Agus Wijaya', 'keahlian': 'Pemasangan Keramik', 'rating': 4},
-    ];
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (errorMessage.isNotEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Rekomendasi Tukang"),
+          backgroundColor: Colors.orange,
+        ),
+        body: Center(child: Text(errorMessage, textAlign: TextAlign.center)),
+      );
+    }
+
+    if (tukangList.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Rekomendasi Tukang"),
+          backgroundColor: Colors.orange,
+        ),
+        body: const Center(child: Text("Tidak ada tukang yang cocok")),
+      );
+    }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
-        title: const Text(
-          'Rekomendasi Tukang',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFFFF9800),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
+        title: const Text("Rekomendasi Tukang"),
+        backgroundColor: Colors.orange,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView.builder(
-          itemCount: tukangList.length,
-          itemBuilder: (context, index) {
-            final tukang = tukangList[index];
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: tukangList.length,
+        itemBuilder: (context, index) {
+          final tukang = tukangList[index];
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // 🔸 Kiri: info tukang
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundImage: tukang.foto.isNotEmpty
+                      ? NetworkImage(tukang.foto)
+                      : null,
+                  child: tukang.foto.isEmpty
+                      ? const Icon(Icons.person, size: 28)
+                      : null,
+                ),
+                const SizedBox(width: 12),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tukang.nama,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        tukang.keahlian,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
                         children: [
-                          GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ProfilTukangPage(),
+                          const Icon(Icons.star, color: Colors.amber, size: 18),
+                          const SizedBox(width: 4),
+                          Text(tukang.rating.toString()),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              // TODO: Aksi chat
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ),
-                            child: Text(
-                              tukang['nama'] as String,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF007BFF),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            tukang['keahlian'] as String,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: List.generate(
-                              5,
-                              (i) => Icon(
-                                i < (tukang['rating'] as int)
-                                    ? Icons.star
-                                    : Icons.star_border,
-                                color: Colors.amber,
+                              child: const Icon(
+                                Icons.chat,
+                                color: Colors.orange,
                                 size: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          Expanded(
+                            child: SizedBox(
+                              height: 40,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => FormPesananPage(
+                                        namaTukang: tukang.nama,
+                                        tukangId: tukang.id,
+                                        jenisKerusakan: widget.jenisKerusakan,
+                                      ),
+                                    ),
+                                  );
+                                },
+
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: const Text(
+                                  "Pesan Sekarang",
+                                  style: TextStyle(color: Colors.white),
+                                ),
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-
-                    // 🔸 Kanan: Chat & Pesan
-                    Column(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ChatRoomPage(
-                                  chatName: tukang['nama'] as String,
-                                ),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFFF3E0),
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(10),
-                            child: const Icon(
-                              Icons.chat_rounded,
-                              color: Color(0xFFFF9800),
-                              size: 26,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // 🔥 TOMBOL PESAN DENGAN POPUP PREMIUM
-                        ElevatedButton(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (context) {
-                                return Dialog(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(20),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // ✔ Animasi check
-                                        TweenAnimationBuilder<double>(
-                                          tween: Tween(begin: 0, end: 1),
-                                          duration: const Duration(
-                                            milliseconds: 700,
-                                          ),
-                                          builder: (context, value, child) {
-                                            return Transform.scale(
-                                              scale: value,
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  18,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.orange
-                                                      .withOpacity(0.2),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.check_circle_rounded,
-                                                  size: 70,
-                                                  color: Colors.orange,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-
-                                        const SizedBox(height: 20),
-
-                                        const Text(
-                                          'Pembayaran Berhasil!',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 10),
-
-                                        const Text(
-                                          'Tukang akan segera menghubungi Anda melalui chat.',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black54,
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 25),
-
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.orange,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 12,
-                                                  ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                            ),
-                                            child: const Text(
-                                              'Oke',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF9800),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            elevation: 2,
-                          ),
-                          child: const Text(
-                            'Pesan Sekarang',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              ],
+            ),
+          );
+        },
       ),
-      bottomNavigationBar: const BottomNav(currentIndex: 2),
     );
   }
 }
-

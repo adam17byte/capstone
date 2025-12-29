@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav.dart';
-import 'deteksi_page.dart';
 import 'chatbot_page.dart';
 import 'notifikasi_page.dart';
 import 'artikel_kerusakan_awal_page.dart';
 import 'artikel_renovasi_aman_page.dart';
+import 'panduan_deteksi_page.dart';
+import 'panduan_mitra_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final PageController _panduanController = PageController();
+  int _currentPanduan = 0;
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
@@ -20,16 +30,12 @@ class HomePage extends StatelessWidget {
             padding: const EdgeInsets.only(left: 30),
             child: Transform.scale(
               scale: 2.5,
-              child: Image.asset(
-                'assets/images/logo_temantukang.png',
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset('assets/images/logo_temantukang.png'),
             ),
           ),
           actions: [
             IconButton(
               icon: const Icon(Icons.notifications_active_outlined),
-              tooltip: 'Notifikasi',
               onPressed: () {
                 Navigator.push(
                   context,
@@ -42,11 +48,8 @@ class HomePage extends StatelessWidget {
 
         body: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              /// ===========================
-              /// BANNER
-              /// ===========================
+              /// =========================== BANNER  ===========================
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: ClipRRect(
@@ -104,101 +107,85 @@ class HomePage extends StatelessWidget {
 
               const SizedBox(height: 30),
 
-              /// ===========================
-              /// PANDUAN PENGGUNAAN
-              /// ===========================
-              const Center(
-                child: Text(
-                  'Panduan Penggunaan',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
+              /// ================= PANDUAN =================
+              const Text(
+                'Panduan Penggunaan',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
+              const SizedBox(height: 16),
 
-              const SizedBox(height: 20),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              /// ===== PAGEVIEW PANDUAN =====
+              SizedBox(
+                height: 320,
+                child: PageView(
+                  controller: _panduanController,
+                  onPageChanged: (index) {
+                    setState(() => _currentPanduan = index);
+                  },
                   children: [
-                    Expanded(
-                      child: _panduanDetailCard(
-                        image: 'assets/images/panduankiri.jpeg',
-                        title: 'Cara Memesan Tukang Menggunakan Fitur Deteksi',
-                        steps: [
-                          'Buka aplikasi Teman Tukang dan pilih menu Deteksi.',
-                          'Masuk ke halaman deteksi, lalu unggah gambar kerusakan rumahmu.',
-                          'Tekan tombol Deteksi untuk memulai analisis kerusakan.',
-                          'Aplikasi akan menampilkan hasil analisis kerusakan.',
-                          'Dari hasil deteksi, aplikasi menampilkan rekomendasi tukang sesuai faktor kerusakan.',
-                          'Klik salah satu tukang untuk melihat profil dan pengalaman mereka.',
-                          'Jika sudah yakin, tekan tombol Pesan Sekarang untuk memesan tukang.',
-                          'Jika ingin konsultasi dulu, gunakan tombol Chat untuk berkomunikasi dengan tukang.',
-                        ],
-                        buttonLabel: 'Coba Deteksi Sekarang',
-                        action: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const DeteksiPage(),
-                            ),
-                          );
-                        },
-                      ),
+                    _panduanCard(
+                      context: context,
+                      image: 'assets/images/panduankiri.jpeg',
+                      title: 'Memesan Tukang dengan Deteksi',
+                      desc:
+                          'Gunakan fitur deteksi untuk mengetahui jenis kerusakan bangunan dan mendapatkan rekomendasi tukang secara otomatis.',
+                      page: const PanduanDeteksiPage(),
                     ),
-
-                    const SizedBox(width: 16),
-
-                    Expanded(
-                      child: _panduanDetailCard(
-                        image: 'assets/images/panduankanan.jpeg',
-                        title: 'Cara Menjadi Tukang Mitra',
-                        steps: [
-                          'Hubungi tim kami via WhatsApp untuk verifikasi data.',
-                          'Setelah dikonfirmasi, akun akan dibuat di aplikasi Mitra Teman Tukang.',
-                          'Login menggunakan email atau nomor telepon.',
-                          'Lengkapi profil, termasuk skill dan layanan.',
-                          'Mulai menerima pesanan dan kelola pekerjaan dari aplikasi.',
-                        ],
-                        buttonLabel: 'Hubungi via WA',
-                        action: () {},
-                      ),
+                    _panduanCard(
+                      context: context,
+                      image: 'assets/images/panduankanan.jpeg',
+                      title: 'Menjadi Tukang Mitra',
+                      desc:
+                          'Daftarkan diri Anda sebagai mitra Teman Tukang dan mulai menerima pesanan sesuai keahlian.',
+                      page: const PanduanMitraPage(),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 10),
 
-              /// ===========================
-              /// ARTIKEL PILIHAN
-              /// ===========================
-              const Center(
-                child: Text(
-                  "Cara Perawatan & Renovasi Rumah",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              /// ===== DOT INDICATOR =====
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  2,
+                  (index) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: _currentPanduan == index ? 18 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: _currentPanduan == index
+                          ? const Color(0xFFFF9800)
+                          : const Color.fromARGB(255, 224, 224, 224),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 40),
+
+              /// ================= ARTIKEL =================
+              const Text(
+                "Cara Perawatan & Renovasi Rumah",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
 
               _artikelCard(
                 context,
-                image:
-                    "https://assets.promediateknologi.id/crop/0x0:0x0/750x500/webp/photo/2023/02/11/969053708.jpeg",
-                title: "Cara Mengenali Kerusakan Rumah Sejak Dini",
-                desc:
-                    "Kenali tanda-tanda awal kerusakan rumah agar tidak berubah menjadi masalah besar.",
+                image: 'assets/images/mengenali_kerusakan.jpg',
+                title: "Mengenali Kerusakan Rumah",
+                desc: "Kenali tanda-tanda awal kerusakan rumah sejak dini.",
                 page: const ArtikelKerusakanAwalPage(),
               ),
 
               _artikelCard(
                 context,
-                image:
-                    "https://assets.promediateknologi.id/crop/0x0:0x0/750x500/webp/photo/2023/02/11/969053708.jpeg",
-                title: "Tips Renovasi Rumah Aman & Hemat",
-                desc:
-                    "Pelajari cara memilih tukang profesional dan merencanakan renovasi yang efisien.",
+                image: 'assets/images/tips_renovasi.jpg',
+                title: "Tips Renovasi Aman & Hemat",
+                desc: "Tips renovasi rumah agar aman dan sesuai anggaran.",
                 page: const ArtikelRenovasiAmanPage(),
               ),
 
@@ -215,12 +202,7 @@ class HomePage extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const ChatbotPage()),
             );
           },
-          child: Image.network(
-            'https://cdn-icons-png.flaticon.com/128/15511/15511514.png',
-            width: 28,
-            height: 28,
-            color: Colors.white,
-          ),
+          child: const Icon(Icons.chat, color: Colors.white),
         ),
 
         bottomNavigationBar: const BottomNav(currentIndex: 0),
@@ -228,87 +210,77 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  /// ===============================
-  /// CARD PANDUAN
-  /// ===============================
-  static Widget _panduanDetailCard({
+  /// ================= CARD PANDUAN =================
+  static Widget _panduanCard({
+    required BuildContext context,
     required String image,
     required String title,
-    required List<String> steps,
-    required String buttonLabel,
-    VoidCallback? action,
+    required String desc,
+    required Widget page,
   }) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                image,
-                height: 120,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Text(
-              title,
-              style: const TextStyle(
-                color: Color(0xFFFF9800),
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            ...steps.asMap().entries.map((e) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  '${e.key + 1}. ${e.value}',
-                  style: const TextStyle(fontSize: 13, height: 1.3),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        elevation: 5,
+        color: const Color.fromARGB(255, 248, 243, 234), // 👈 background card
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.asset(
+                  image,
+                  height: 130,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
-              );
-            }),
-
-            const SizedBox(height: 14),
-
-            Center(
-              child: ElevatedButton(
-                onPressed: action,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF9800),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 22,
-                    vertical: 12,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Color(0xFFFF9800),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                desc,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13.5, height: 1.4),
+              ),
+              const Spacer(),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => page),
+                    );
+                  },
+                  child: const Text(
+                    'Lihat Selengkapnya',
+                    style: TextStyle(
+                      color: Color(0xFFFF9800),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                child: Text(
-                  buttonLabel,
-                  style: const TextStyle(color: Colors.white),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// ===============================
-  /// CARD ARTIKEL (Horizontal Style)
-  /// ===============================
+  /// ================= CARD ARTIKEL =================
   static Widget _artikelCard(
     BuildContext context, {
     required String image,
@@ -320,69 +292,50 @@ class HomePage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Card(
         elevation: 4,
+        color: const Color.fromARGB(255, 248, 243, 234),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: Row(
           children: [
-            // LEFT IMAGE
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(14),
                 bottomLeft: Radius.circular(14),
               ),
-              child: Image.network(
+              child: Image.asset(
                 image,
-                width: 120,
-                height: 120,
+                width: 110,
+                height: 110,
                 fit: BoxFit.cover,
               ),
             ),
-
-            // RIGHT CONTENT
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      desc,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
+                    Text(desc, style: const TextStyle(fontSize: 13)),
+                    const SizedBox(height: 8),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: ElevatedButton(
+                      child: TextButton(
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => page),
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF9800),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 10,
-                          ),
-                        ),
                         child: const Text(
-                          "Baca Selengkapnya",
-                          style: TextStyle(color: Colors.white),
+                          'Lihat Selengkapnya',
+                          style: TextStyle(
+                            color: Color(0xFFFF9800),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),

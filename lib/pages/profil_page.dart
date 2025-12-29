@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../widgets/bottom_nav.dart';
 import '../auth/login_page.dart';
 import 'edit_profil_page.dart'; // Tambahkan import ini
@@ -38,7 +39,24 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false);
+
+    // Clear semua data login
+    await prefs.remove('isLoggedIn');
+    await prefs.remove('userId');
+    await prefs.remove('username');
+    await prefs.remove('email');
+    await prefs.remove('role');
+    await prefs.remove('jwt');
+    await prefs.remove('imagePath');
+
+    // Sign out dari Google jika sedang login Google
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+    } catch (e) {
+      // Ignore error jika tidak ada Google account yang login
+    }
+
     if (!mounted) return;
     Navigator.pushReplacement(
       context,

@@ -28,8 +28,7 @@ class _ChatbotPageState extends State<ChatbotPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       backgroundColor: const Color(0xFFF6F6F6),
       appBar: AppBar(
         title: const Text(
@@ -75,7 +74,7 @@ class _ChatbotPageState extends State<ChatbotPage> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withAlpha((0.05 * 255).toInt()),
                           blurRadius: 4,
                         ),
                       ],
@@ -102,7 +101,7 @@ class _ChatbotPageState extends State<ChatbotPage> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withAlpha((0.08 * 255).toInt()),
                     blurRadius: 4,
                   ),
                 ],
@@ -140,5 +139,4 @@ class _ChatbotPageState extends State<ChatbotPage> {
         ],
       ),
     );
-  }
 }

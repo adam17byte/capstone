@@ -1,15 +1,15 @@
 import 'dart:io' as io;
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav.dart';
+import '../widgets/constants.dart';
 import 'rekomendasi_page.dart';
 
 class HasilDeteksiPage extends StatelessWidget {
   final io.File? imageFile;
   final Uint8List? webImage;
   final String hasilLabel;
-  final double confidence; // tidak ditampilkan
+  final double confidence;
 
   const HasilDeteksiPage({
     super.key,
@@ -19,8 +19,11 @@ class HasilDeteksiPage extends StatelessWidget {
     required this.confidence,
   });
 
+  // ======================
+  // ANALISIS FAKTOR (LOWERCASE)
+  // ======================
   String _analisisFaktor(String label) {
-    final Map<String, String> analisisFaktor = {
+    final map = {
       "tembok retak":
           "Kerusakan terjadi karena fondasi mengalami penurunan tidak merata, getaran berulang, atau tekanan beban berlebih pada struktur dinding.",
       "plafon bocor":
@@ -29,14 +32,30 @@ class HasilDeteksiPage extends StatelessWidget {
           "Keramik retak atau terangkat dapat terjadi akibat permukaan lantai yang tidak rata, penurunan tanah, atau pemasangan awal yang kurang tepat.",
       "cat ngelupas":
           "Cat mengelupas umumnya dipicu oleh kelembaban tinggi, rembesan air, atau permukaan dinding yang tidak dibersihkan dengan baik sebelum pengecatan.",
-      "Kayu Kusen Lapuk":
+      "kayu kusen lapuk":
           "Kusen kayu dapat lapuk karena paparan air, kelembaban tinggi, atau serangan jamur dan rayap, sehingga kayu kehilangan kekuatan strukturalnya.",
-      "Dinding Berjamur":
-          "Dinding berjamur terjadi akibat kelembaban berlebih, ventilasi yang buruk, atau rembesan air yang terus-menerus, sehingga jamur berkembang di permukaan dinding.",
+      "dinding berjamur":
+          "Dinding berjamur terjadi akibat kelembaban berlebih, ventilasi yang buruk, atau rembesan air yang terus-menerus.",
     };
 
-    return analisisFaktor[label] ??
+    return map[label.toLowerCase()] ??
         "Kerusakan terdeteksi pada bangunan dan memerlukan pemeriksaan lebih lanjut.";
+  }
+
+  // ======================
+  // MAP KE LABEL BACKEND (WAJIB)
+  // ======================
+  String mapToBackendLabel(String label) {
+    final map = {
+      "tembok retak": "Retak Dinding",
+      "plafon bocor": "Plafon Rusak",
+      "kramik pecah": "Keramik Rusak",
+      "cat ngelupas": "Cat Mengelupas",
+      "kayu kusen lapuk": "Kayu Kusen Lapuk",
+      "dinding berjamur": "Dinding Berjamur",
+    };
+
+    return map[label.toLowerCase()] ?? "Retak Dinding";
   }
 
   @override
@@ -58,10 +77,9 @@ class HasilDeteksiPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Hasil Deteksi'),
-        backgroundColor: const Color(0xFFFF9800),
+        backgroundColor: AppColors.primary,
         centerTitle: true,
       ),
-
       body: Column(
         children: [
           Expanded(
@@ -73,129 +91,87 @@ class HasilDeteksiPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: imageWidget,
                   ),
-
                   const SizedBox(height: 20),
-
-                  // BOX JENIS KERUSAKAN
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Jenis Kerusakan',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          hasilLabel,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
+                  _infoBox("Jenis Kerusakan", hasilLabel),
                   const SizedBox(height: 16),
-
-                  // BOX ANALISIS FAKTOR
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Center(
-                          child: Text(
-                            'Analisis Faktor Kerusakan',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _analisisFaktor(hasilLabel),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            height: 1.6,
-                          ),
-                          textAlign: TextAlign.justify,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
+                  _analisisBox(_analisisFaktor(hasilLabel)),
                 ],
               ),
             ),
           ),
-
-          // BUTTON DI BAWAH
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: SafeArea(
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RekomendasiPage(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF9800),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    'Lihat Rekomendasi',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          _rekomendasiButton(context),
         ],
       ),
-
       bottomNavigationBar: const BottomNav(currentIndex: 2),
+    );
+  }
+
+  Widget _infoBox(String title, String value) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: _boxDecoration(),
+      child: Column(
+        children: [
+          Text(title, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+          const SizedBox(height: 6),
+          Text(value, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _analisisBox(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: _boxDecoration(),
+      child: Text(text, style: const TextStyle(fontSize: 14, height: 1.6), textAlign: TextAlign.justify),
+    );
+  }
+
+  BoxDecoration _boxDecoration() => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha((0.05 * 255).toInt()),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      );
+
+  Widget _rekomendasiButton(BuildContext context) {
+    final backendLabel = mapToBackendLabel(hasilLabel);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: SafeArea(
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RekomendasiPage(
+                    jenisKerusakan: backendLabel,
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text(
+              'Lihat Rekomendasi',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -15,27 +14,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   String message = '';
 
-  Future<void> resetPassword() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString('email');
-
-    if (emailController.text != savedEmail) {
-      setState(() => message = 'Email tidak ditemukan!');
-      return;
-    }
-
-    if (newPasswordController.text != confirmPasswordController.text) {
-      setState(() => message = 'Kata sandi tidak sama!');
-      return;
-    }
-
-    await prefs.setString('password', newPasswordController.text);
-
-    setState(() => message = 'Kata sandi berhasil diubah!');
-    await Future.delayed(const Duration(seconds: 1));
-    if (!mounted) return;
-    Navigator.pop(context);
-  }
+  Future<void> resetPassword() async => setState(() => message = 'Fitur reset password sedang dalam pengembangan. Hubungi admin untuk bantuan.');
 
   @override
   Widget build(BuildContext context) {
@@ -112,8 +91,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   Widget _buildTextField(String label, TextEditingController controller,
-      {IconData? icon, bool obscure = false}) {
-    return Padding(
+      {IconData? icon, bool obscure = false}) =>
+    Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: controller,
@@ -130,5 +109,4 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
       ),
     );
-  }
 }

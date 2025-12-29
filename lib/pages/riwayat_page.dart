@@ -1,127 +1,128 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav.dart';
+import '../services/api.dart';
 import 'rating_ulasan_page.dart';
 
-class RiwayatPage extends StatelessWidget {
+class RiwayatPage extends StatefulWidget {
   const RiwayatPage({super.key});
 
   @override
+  State<RiwayatPage> createState() => _RiwayatPageState();
+}
+
+class _RiwayatPageState extends State<RiwayatPage> {
+  bool isLoading = true;
+  String error = '';
+  List orders = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchOrders();
+  }
+
+  Future<void> fetchOrders() async {
+    final result = await Api.getRiwayatOrders();
+
+    if (!mounted) return;
+
+    if (result['status'] == 'success') {
+      setState(() {
+        orders = result['data'];
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        error = result['message'] ?? 'Gagal memuat riwayat';
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final orders = [
-      {
-        'title': 'Perbaikan Pipa Bocor',
-        'tukang': 'Ahmad Imam',
-        'date': '12 Nov 2025',
-        'status': 'Selesai',
-      },
-      {
-        'title': 'Perbaikan Listrik',
-        'tukang': 'Budi Santoso',
-        'date': '02 Okt 2025',
-        'status': 'Dalam Proses',
-      },
-    ];
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (error.isNotEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Riwayat Pesanan'),
+          backgroundColor: Colors.orange,
+        ),
+        body: Center(child: Text(error)),
+      );
+    }
+
+    if (orders.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Riwayat Pesanan'),
+          backgroundColor: Colors.orange,
+        ),
+        body: const Center(child: Text('Belum ada pesanan')),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Riwayat Pesanan'),
-        titleTextStyle: const TextStyle(fontSize: 20, color: Colors.white),
-        backgroundColor: const Color(0xFFFF9800),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
+        backgroundColor: Colors.orange,
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: orders.length,
         itemBuilder: (context, i) {
           final o = orders[i];
-          final isSelesai = o['status'] == 'Selesai';
+          final status = o['status'];
+          final isSelesai = status == 'selesai';
 
           return Card(
             margin: const EdgeInsets.only(bottom: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // === Baris atas: judul & status ===
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          o['title']!,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isSelesai ? Colors.green.shade50 : Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          o['status']!,
-                          style: TextStyle(
-                            color: isSelesai ? Colors.green : Colors.orange,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    o['jenis_kerusakan'],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
-
                   const SizedBox(height: 6),
-                  Text('Tukang: ${o['tukang']}', style: TextStyle(color: Colors.grey[700])),
-                  Text('Tanggal: ${o['date']}', style: TextStyle(color: Colors.grey[600])),
+                  Text("Tukang: ${o['nama']}"),
+                  Text("Status: $status"),
 
-                  // === Baris bawah: tombol beri rating ===
-                  if (isSelesai) ...[
-                    const SizedBox(height: 10),
+                  if (isSelesai)
                     Align(
                       alignment: Alignment.centerRight,
-                      child: ElevatedButton.icon(
+                      child: TextButton(
                         onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => RatingUlasanPage(
-                                tukangName: o['tukang']!,
+                                tukangName: o['nama'],
                               ),
                             ),
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF9800), // Oranye
-                          foregroundColor: Colors.white, // Teks & ikon putih
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          elevation: 2,
-                        ),
-                        label: const Text(
-                          'Beri Rating & Ulasan',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        child: const Text("Beri Ulasan"),
                       ),
                     ),
-                  ],
                 ],
               ),
             ),
           );
         },
       ),
-      bottomNavigationBar: const BottomNav(currentIndex: 1),
     );
   }
 }
