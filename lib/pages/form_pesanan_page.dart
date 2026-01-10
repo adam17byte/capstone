@@ -168,9 +168,12 @@ class _FormPesananPageState extends State<FormPesananPage> {
                       return;
                     }
 
-                    int estimasiHarga = selectedPrice == 0
+                    int harga = selectedPrice == 0
                         ? int.tryParse(budgetController.text) ?? 0
                         : selectedPrice;
+
+                    final tanggal =
+                        "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}";
 
                     showDialog(
                       context: context,
@@ -181,23 +184,18 @@ class _FormPesananPageState extends State<FormPesananPage> {
 
                     final result = await Api.buatOrder(
                       tukangId: widget.tukangId,
-                      jenisKerusakan: widget.jenisKerusakan,
-                      estimasiHarga: estimasiHarga,
+                      namaCustomer: "Customer", // nanti bisa ambil dari JWT
+                      tanggalPengerjaan: tanggal,
+                      alamat: alamatController.text,
+                      hargaPerHari: harga,
                     );
 
-                    Navigator.pop(context); // tutup loading
+                    Navigator.pop(context);
 
                     if (result['status'] == 'success') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Pesanan berhasil dibuat"),
-                        ),
-                      );
-
-                      Navigator.pushAndRemoveUntil(
+                      Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (_) => const RiwayatPage()),
-                        (route) => false,
                       );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -209,6 +207,7 @@ class _FormPesananPageState extends State<FormPesananPage> {
                       );
                     }
                   },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                     padding: const EdgeInsets.symmetric(vertical: 14),

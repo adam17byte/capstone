@@ -7,7 +7,7 @@ import '../services/api.dart';
 import '../pages/home_page.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
-import '../services/logger.dart';
+// import '../services/logger.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -39,11 +39,13 @@ class _LoginPageState extends State<LoginPage> {
   // LOGIN EMAIL / PASSWORD
   // ======================
   Future<void> doLogin() async {
-    // Check rate limiting
     if (_isRateLimited) {
       final remainingTime = _getRemainingLockoutTime();
       if (remainingTime > 0) {
-        setState(() => error = 'Terlalu banyak percobaan login gagal. Coba lagi dalam $remainingTime detik.');
+        setState(() {
+          error =
+              'Terlalu banyak percobaan login gagal. Coba lagi dalam $remainingTime detik.';
+        });
         return;
       } else {
         _resetRateLimit();
@@ -65,28 +67,49 @@ class _LoginPageState extends State<LoginPage> {
       password: passwordController.text.trim(),
     );
 
-    if (result['status'] == 'success') {
-      Logger.auth('Login', 'Email login successful for ${emailController.text}', true);
-      final user = result['user'];
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setInt('userId', user['id_users']);
-      await prefs.setString('username', user['username']);
-      await prefs.setString('email', user['email']);
-      await prefs.setString('role', user['role']);
-      await prefs.setString('jwt', result['access_token'] ?? '');
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
-    } else {
-      Logger.auth('Login', 'Email login failed for ${emailController.text}: ${result['message']}', false);
+    if (result['status'] != 'success') {
       _handleLoginFailure();
-      setState(() => error = result['message'] ?? 'Login gagal');
+      setState(() {
+        error = result['message'] ?? 'Login gagal';
+        isLoading = false;
+      });
+      return;
     }
+
+    final data = result['data'];
+    if (data == null || data is! Map) {
+      setState(() {
+        error = 'Response server tidak valid';
+        isLoading = false;
+      });
+      return;
+    }
+
+    final user = data['user'];
+    final token = data['access_token'];
+
+    if (user == null || token == null) {
+      setState(() {
+        error = 'Data login tidak lengkap';
+        isLoading = false;
+      });
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setInt('userId', user['id_users']);
+    await prefs.setString('username', user['username']);
+    await prefs.setString('email', user['email']);
+    await prefs.setString('role', user['role']);
+    await prefs.setString('jwt', token);
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePage()),
+    );
 
     setState(() => isLoading = false);
   }
@@ -141,29 +164,49 @@ class _LoginPageState extends State<LoginPage> {
 
       final result = await Api.loginGoogle(idToken: idToken);
 
-      if (result['status'] == 'success') {
-        Logger.auth('Login', 'Google login successful for ${account.email}', true);
-        final user = result['user'];
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
-        await prefs.setInt('userId', user['id_users']);
-        await prefs.setString('username', user['username']);
-        await prefs.setString('email', user['email']);
-        await prefs.setString('role', user['auth_provider'] ?? 'google');
-        await prefs.setString('jwt', result['access_token']);
-
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-      } else {
-        Logger.auth('Login', 'Google login failed: ${result['message']}', false);
-        setState(() => error = result['message'] ?? 'Login Google gagal');
+      if (result['status'] != 'success') {
+        setState(() {
+          error = result['message'] ?? 'Login Google gagal';
+          isLoading = false;
+        });
+        return;
       }
-    } on Exception catch (e) {
-      Logger.error('Google login exception', e);
+
+      final data = result['data'];
+      if (data == null || data is! Map) {
+        setState(() {
+          error = 'Response server tidak valid';
+          isLoading = false;
+        });
+        return;
+      }
+
+      final user = data['user'];
+      final token = data['access_token'];
+
+      if (user == null || token == null) {
+        setState(() {
+          error = 'Data login Google tidak lengkap';
+          isLoading = false;
+        });
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setInt('userId', user['id_users']);
+      await prefs.setString('username', user['username']);
+      await prefs.setString('email', user['email']);
+      await prefs.setString('role', user['role']);
+      await prefs.setString('jwt', token);
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } catch (e) {
       setState(() => error = e.toString());
     }
 
@@ -202,9 +245,15 @@ class _LoginPageState extends State<LoginPage> {
               TextField(
                 controller: passwordController,
                 obscureText: !isPasswordVisible,
-                decoration: input('Password', Icons.lock_outline, isPassword: true, isPasswordVisible: isPasswordVisible, onToggleVisibility: () {
-                  setState(() => isPasswordVisible = !isPasswordVisible);
-                }),
+                decoration: input(
+                  'Password',
+                  Icons.lock_outline,
+                  isPassword: true,
+                  isPasswordVisible: isPasswordVisible,
+                  onToggleVisibility: () {
+                    setState(() => isPasswordVisible = !isPasswordVisible);
+                  },
+                ),
               ),
 
               if (error.isNotEmpty)
@@ -279,10 +328,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 child: const Text(
                   'Lupa Password?',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
                 ),
               ),
             ],
@@ -295,13 +341,21 @@ class _LoginPageState extends State<LoginPage> {
   // ======================
   // UI HELPER
   // ======================
-  InputDecoration input(String label, IconData icon, {bool isPassword = false, bool? isPasswordVisible, VoidCallback? onToggleVisibility}) => InputDecoration(
+  InputDecoration input(
+    String label,
+    IconData icon, {
+    bool isPassword = false,
+    bool? isPasswordVisible,
+    VoidCallback? onToggleVisibility,
+  }) => InputDecoration(
     labelText: label,
     prefixIcon: Icon(icon, color: const Color(0xFFFF9800)),
     suffixIcon: isPassword
         ? IconButton(
             icon: Icon(
-              isPasswordVisible ?? false ? Icons.visibility_off : Icons.visibility,
+              isPasswordVisible ?? false
+                  ? Icons.visibility_off
+                  : Icons.visibility,
               color: const Color(0xFFFF9800),
             ),
             onPressed: onToggleVisibility,

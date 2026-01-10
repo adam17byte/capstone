@@ -20,8 +20,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -202,12 +201,16 @@ class _HomePageState extends State<HomePage> {
               MaterialPageRoute(builder: (_) => const ChatbotPage()),
             );
           },
-          child: const Icon(Icons.chat, color: Colors.white),
+          child: Image.network(
+            'https://cdn-icons-png.flaticon.com/128/15511/15511514.png',
+            width: 28,
+            height: 28,
+            color: Colors.white,
+          ),
         ),
 
         bottomNavigationBar: const BottomNav(currentIndex: 0),
-      ),
-    );
+      );
   }
 
   /// ================= CARD PANDUAN =================

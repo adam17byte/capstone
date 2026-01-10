@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api.dart';
 import '../models/tukang.dart';
 import 'form_pesanan_page.dart';
+import 'profil_tukang_page.dart';
 
 class RekomendasiPage extends StatefulWidget {
   final String jenisKerusakan;
@@ -38,7 +39,7 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
       }
 
       final result = await Api.getRekomendasi(
-        jenisKerusakan: widget.jenisKerusakan, // contoh: "Retak Dinding"
+        jenisKerusakan: widget.jenisKerusakan,
         token: token,
       );
 
@@ -68,7 +69,9 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (errorMessage.isNotEmpty) {
@@ -77,7 +80,12 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
           title: const Text("Rekomendasi Tukang"),
           backgroundColor: Colors.orange,
         ),
-        body: Center(child: Text(errorMessage, textAlign: TextAlign.center)),
+        body: Center(
+          child: Text(
+            errorMessage,
+            textAlign: TextAlign.center,
+          ),
+        ),
       );
     }
 
@@ -87,7 +95,9 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
           title: const Text("Rekomendasi Tukang"),
           backgroundColor: Colors.orange,
         ),
-        body: const Center(child: Text("Tidak ada tukang yang cocok")),
+        body: const Center(
+          child: Text("Tidak ada tukang yang cocok"),
+        ),
       );
     }
 
@@ -119,14 +129,25 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundImage: tukang.foto.isNotEmpty
-                      ? NetworkImage(tukang.foto)
-                      : null,
-                  child: tukang.foto.isEmpty
-                      ? const Icon(Icons.person, size: 28)
-                      : null,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ProfilTukangPage(idTukang: tukang.id),
+                      ),
+                    );
+                  },
+                  child: CircleAvatar(
+                    radius: 30,
+                    backgroundImage: tukang.foto.isNotEmpty
+                        ? NetworkImage(tukang.foto)
+                        : null,
+                    child: tukang.foto.isEmpty
+                        ? const Icon(Icons.person, size: 30)
+                        : null,
+                  ),
                 ),
                 const SizedBox(width: 12),
 
@@ -144,71 +165,56 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
                       const SizedBox(height: 4),
                       Text(
                         tukang.keahlian,
-                        style: const TextStyle(color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 18),
+                          const Icon(
+                            Icons.star,
+                            color: Colors.amber,
+                            size: 16,
+                          ),
                           const SizedBox(width: 4),
-                          Text(tukang.rating.toString()),
+                          Text(
+                            tukang.rating.toString(),
+                            style: const TextStyle(fontSize: 13),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
 
-                      Row(
-                        children: [
-                          InkWell(
-                            onTap: () {
-                              // TODO: Aksi chat
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.chat,
-                                color: Colors.orange,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-
-                          Expanded(
-                            child: SizedBox(
-                              height: 40,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => FormPesananPage(
-                                        namaTukang: tukang.nama,
-                                        tukangId: tukang.id,
-                                        jenisKerusakan: widget.jenisKerusakan,
-                                      ),
-                                    ),
-                                  );
-                                },
-
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: const Text(
-                                  "Pesan Sekarang",
-                                  style: TextStyle(color: Colors.white),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => FormPesananPage(
+                                  namaTukang: tukang.nama,
+                                  tukangId: tukang.id,
+                                  jenisKerusakan:
+                                      widget.jenisKerusakan,
                                 ),
                               ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                        ],
+                          child: const Text(
+                            "Pesan Sekarang",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
                       ),
                     ],
                   ),

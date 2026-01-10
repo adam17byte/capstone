@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api.dart';
 import 'chat_room_page.dart';
+import '../widgets/bottom_nav.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -11,21 +12,27 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   bool isLoading = true;
-  List orders = [];
+  List chats = [];
+  String error = "";
 
   @override
   void initState() {
     super.initState();
-    fetchOrders();
+    fetchChats();
   }
 
-  Future<void> fetchOrders() async {
-    final result = await Api.getRiwayatOrders();
+  Future<void> fetchChats() async {
+    final result = await Api.getHomePesanan(); // kita buat helper ini
     if (!mounted) return;
 
-    if (result['status'] == 'success') {
+    if (result["status"] == "success") {
       setState(() {
-        orders = result['data'];
+        chats = result["data"];
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        error = result["message"];
         isLoading = false;
       });
     }
@@ -39,30 +46,30 @@ class _ChatPageState extends State<ChatPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat'),
+        title: const Text("Chat"),
         backgroundColor: Colors.orange,
       ),
-      body: orders.isEmpty
-          ? const Center(child: Text('Belum ada chat'))
+      body: chats.isEmpty
+          ? const Center(child: Text("Belum ada chat"))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: orders.length,
-              itemBuilder: (context, i) {
-                final o = orders[i];
+              itemCount: chats.length,
+              itemBuilder: (context, index) {
+                final c = chats[index];
                 return ListTile(
                   leading: const CircleAvatar(
                     backgroundColor: Colors.orange,
                     child: Icon(Icons.person, color: Colors.white),
                   ),
-                  title: Text(o['nama']),
-                  subtitle: Text(o['jenis_kerusakan']),
+                  title: Text(c["nama_tukang"]),
+                  subtitle: Text("Status: ${c["status"]}"),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => ChatRoomPage(
-                          orderId: o['id_order'],
-                          namaLawan: o['nama'],
+                          pesananId: c["id_pesanan"],
+                          chatName: c["nama_tukang"],
                         ),
                       ),
                     );
@@ -70,6 +77,7 @@ class _ChatPageState extends State<ChatPage> {
                 );
               },
             ),
+      bottomNavigationBar: const BottomNav(currentIndex: 3),
     );
   }
 }
