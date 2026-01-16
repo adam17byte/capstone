@@ -1,6 +1,6 @@
-import 'package:capstone/pages/riwayat_page.dart';
 import 'package:flutter/material.dart';
 import '../services/api.dart';
+import 'riwayat_page.dart';
 
 class FormPesananPage extends StatefulWidget {
   final String namaTukang;
@@ -21,41 +21,98 @@ class FormPesananPage extends StatefulWidget {
 class _FormPesananPageState extends State<FormPesananPage> {
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
-  int selectedPrice = 250000;
 
-  final budgetController = TextEditingController();
-  final alamatController = TextEditingController();
+  int selectedPrice = 150000;
+  String metodePembayaran = 'transfer';
+
+  final TextEditingController alamatController = TextEditingController();
+  final TextEditingController budgetController = TextEditingController();
+
+  bool isLoading = false;
+
+  @override
+  void dispose() {
+    alamatController.dispose();
+    budgetController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (selectedDate == null || alamatController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Lengkapi semua data")));
+      return;
+    }
+
+    final harga = selectedPrice == 0
+        ? int.tryParse(budgetController.text) ?? 0
+        : selectedPrice;
+
+    if (harga <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Harga tidak valid")));
+      return;
+    }
+
+    // 🔒 SAFETY: pastikan metode valid
+    if (metodePembayaran != 'cash' && metodePembayaran != 'transfer') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Metode pembayaran tidak valid")),
+      );
+      return;
+    }
+
+    final tanggal =
+        "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}";
+
+    setState(() => isLoading = true);
+
+    final result = await Api.buatOrder(
+      tukangId: widget.tukangId,
+      namaCustomer: "Customer",
+      alamat: alamatController.text,
+      tanggalPengerjaan: tanggal, // ⬅️ DATE ONLY
+      hargaPerHari: harga,
+      metodePembayaran: metodePembayaran, // cash / transfer
+    );
+
+    setState(() => isLoading = false);
+
+    if (result['status'] == 'success') {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const RiwayatPage()),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? 'Gagal membuat pesanan')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: Text(
-          "Form Pesanan - ${widget.namaTukang}",
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
+        title: Text("Pesan ${widget.namaTukang}"),
         backgroundColor: Colors.orange,
-        iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Container(
-          width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black12,
-                blurRadius: 10,
+                blurRadius: 8,
                 offset: Offset(0, 4),
               ),
             ],
@@ -63,166 +120,106 @@ class _FormPesananPageState extends State<FormPesananPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Jam Operasional 07:00 - 24:00",
-                style: TextStyle(
-                  fontSize: screenWidth < 360 ? 16 : 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                "Pilih tanggal, jam, alamat, & harga",
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-
-              const SizedBox(height: 25),
-
-              screenWidth < 600
-                  ? Column(
-                      children: [
-                        _buildDateInput(),
-                        const SizedBox(height: 20),
-                        _buildTimeInput(),
-                      ],
-                    )
-                  : Row(
-                      children: [
-                        Expanded(child: _buildDateInput()),
-                        const SizedBox(width: 20),
-                        Expanded(child: _buildTimeInput()),
-                      ],
-                    ),
-
-              const SizedBox(height: 25),
-
-              /// =======================
-              /// INPUT ALAMAT
-              /// =======================
               const Text(
-                "Alamat Pekerjaan",
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                "Detail Pesanan",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
+
+              _dateInput(),
+              const SizedBox(height: 16),
+              _timeInput(),
+              const SizedBox(height: 20),
+
+              const Text("Alamat Pekerjaan"),
+              const SizedBox(height: 6),
               TextField(
                 controller: alamatController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: "Contoh: Jl. Merdeka No.10, Bandung",
+                  hintText: "Alamat lengkap lokasi pekerjaan",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
 
-              const Text(
-                "Harga Penawaran",
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 10),
-
+              const Text("Harga Penawaran"),
+              const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                initialValue: selectedPrice,
+                value: selectedPrice,
                 decoration: InputDecoration(
-                  labelText: "Pilih Budget",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 250000, child: Text("Rp. 250.000")),
-                  DropdownMenuItem(value: 300000, child: Text("Rp. 300.000")),
+                  DropdownMenuItem(value: 100000, child: Text("Rp 100.000")),
+                  DropdownMenuItem(value: 150000, child: Text("Rp 150.000")),
                   DropdownMenuItem(value: 0, child: Text("Custom")),
                 ],
-                onChanged: (value) => setState(() => selectedPrice = value!),
+                onChanged: (v) => setState(() => selectedPrice = v!),
               ),
 
-              if (selectedPrice == 0)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: TextField(
-                    controller: budgetController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: "Input budget (mis: 500000)",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+              if (selectedPrice == 0) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: budgetController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: "Masukkan budget",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
+              ],
+
+              const SizedBox(height: 20),
+
+              const Text("Metode Pembayaran"),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                value: metodePembayaran,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'transfer',
+                    child: Text("Transfer Bank"),
+                  ),
+                  DropdownMenuItem(
+                    value: 'cash',
+                    child: Text("Bayar di Tempat"),
+                  ),
+                ],
+                onChanged: (v) => setState(() => metodePembayaran = v!),
+              ),
 
               const SizedBox(height: 30),
 
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () async {
-                    if (selectedDate == null ||
-                        selectedTime == null ||
-                        alamatController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Lengkapi semua data")),
-                      );
-                      return;
-                    }
-
-                    int harga = selectedPrice == 0
-                        ? int.tryParse(budgetController.text) ?? 0
-                        : selectedPrice;
-
-                    final tanggal =
-                        "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}";
-
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) =>
-                          const Center(child: CircularProgressIndicator()),
-                    );
-
-                    final result = await Api.buatOrder(
-                      tukangId: widget.tukangId,
-                      namaCustomer: "Customer", // nanti bisa ambil dari JWT
-                      tanggalPengerjaan: tanggal,
-                      alamat: alamatController.text,
-                      hargaPerHari: harga,
-                    );
-
-                    Navigator.pop(context);
-
-                    if (result['status'] == 'success') {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const RiwayatPage()),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            result['message'] ?? 'Gagal membuat pesanan',
-                          ),
-                        ),
-                      );
-                    }
-                  },
-
+                  onPressed: isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    "Kirim Pesanan",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "Kirim Pesanan",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
                 ),
               ),
             ],
@@ -232,32 +229,26 @@ class _FormPesananPageState extends State<FormPesananPage> {
     );
   }
 
-  Widget _buildDateInput() {
+  Widget _dateInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Pilih Tanggal",
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
+        const Text("Tanggal Pengerjaan"),
+        const SizedBox(height: 6),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
-            hintText: "mm/dd/yyyy",
+            hintText: selectedDate == null
+                ? "Pilih tanggal"
+                : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
             suffixIcon: const Icon(Icons.calendar_today),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          controller: TextEditingController(
-            text: selectedDate == null
-                ? ""
-                : "${selectedDate!.month}/${selectedDate!.day}/${selectedDate!.year}",
           ),
           onTap: () async {
             final picked = await showDatePicker(
               context: context,
-              firstDate: DateTime(2020),
-              lastDate: DateTime(2030),
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
               initialDate: DateTime.now(),
             );
             if (picked != null) {
@@ -269,24 +260,20 @@ class _FormPesananPageState extends State<FormPesananPage> {
     );
   }
 
-  Widget _buildTimeInput() {
+  Widget _timeInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Pilih Waktu",
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
+        const Text("Jam Pengerjaan"),
+        const SizedBox(height: 6),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
-            hintText: "-- : --",
+            hintText: selectedTime == null
+                ? "Pilih jam"
+                : selectedTime!.format(context),
             suffixIcon: const Icon(Icons.access_time),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          controller: TextEditingController(
-            text: selectedTime == null ? "" : selectedTime!.format(context),
           ),
           onTap: () async {
             final picked = await showTimePicker(

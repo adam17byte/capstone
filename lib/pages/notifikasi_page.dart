@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api.dart';
 import '../services/socket_service.dart';
 
@@ -11,37 +12,70 @@ class NotifikasiPage extends StatefulWidget {
 
 class _NotifikasiPageState extends State<NotifikasiPage> {
   final SocketService _socket = SocketService();
-  List notifikasi = [];
+  List<Map<String, dynamic>> notifikasi = [];
   bool isLoading = true;
+  String? jwt;
 
   @override
   void initState() {
     super.initState();
-    _load();
-    _listenSocket();
+    _init();
   }
 
-  Future<void> _load() async {
-    final res = await Api.getNotifikasi();
-    if (res["status"] == "success") {
-      setState(() {
-        notifikasi = res["data"];
-        isLoading = false;
-      });
+  // ================= INIT =================
+  Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    jwt = prefs.getString("jwt");
+
+    await _loadHistory();
+
+    if (jwt != null) {
+      _initSocket();
     }
   }
 
-  void _listenSocket() {
-    _socket.onNotifikasi((data) {
-      setState(() {
-        notifikasi.insert(0, {
-          "judul": data["judul"],
-          "isi": data["isi"],
-        });
-      });
+  // ================= LOAD HISTORY =================
+  Future<void> _loadHistory() async {
+    final res = await Api.getNotifikasi();
+    if (!mounted) return;
+
+    if (res["status"] == "success") {
+      notifikasi = List<Map<String, dynamic>>.from(res["data"]);
+    }
+
+    setState(() {
+      isLoading = false;
     });
   }
 
+  // ================= SOCKET =================
+  void _initSocket() {
+    _socket.connect(
+      baseUrl: "https://witted-gentler-jeanett.ngrok-free.dev",
+      token: jwt!,
+      onConnected: () {
+        _socket.onNotifikasi((data) {
+          if (!mounted) return;
+
+          setState(() {
+            notifikasi.insert(0, {
+              "judul": data["judul"],
+              "isi": data["isi"],
+              "created_at": data["created_at"],
+            });
+          });
+        });
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _socket.disconnect();
+    super.dispose();
+  }
+
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,21 +85,27 @@ class _NotifikasiPageState extends State<NotifikasiPage> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: notifikasi.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final n = notifikasi[index];
-                return Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.notifications, color: Colors.orange),
-                    title: Text(n["judul"]),
-                    subtitle: Text(n["isi"]),
-                  ),
-                );
-              },
-            ),
+          : notifikasi.isEmpty
+              ? const Center(child: Text("Belum ada notifikasi"))
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: notifikasi.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final n = notifikasi[index];
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.notifications,
+                          color: Colors.orange,
+                        ),
+                        title: Text(n["judul"]),
+                        subtitle: Text(n["isi"]),
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

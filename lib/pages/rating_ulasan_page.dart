@@ -41,8 +41,8 @@ class _RetingUlasanPageState extends State<RetingUlasanPage> {
     setState(() {
       isLoading = true;
     });
-
     final result = await Api.kirimReview(
+      pesananId: widget.orderId,
       tukangId: widget.tukangId,
       reviewText: ulasanController.text,
       rating: rating.toInt(),

@@ -9,7 +9,7 @@ class Api {
   // =========================
   static const String baseUrl = "https://witted-gentler-jeanett.ngrok-free.dev";
 
-  static const Duration timeoutDuration = Duration(seconds: 15);
+  static const Duration timeoutDuration = Duration(seconds: 365);
 
   // =========================
   // HEADERS
@@ -79,11 +79,13 @@ class Api {
     required String password,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse("$baseUrl/api/login"),
-        headers: _jsonHeaders,
-        body: jsonEncode({"email": email, "password": password}),
-      );
+      final response = await http
+          .post(
+            Uri.parse("$baseUrl/api/login"),
+            headers: _jsonHeaders,
+            body: jsonEncode({"email": email, "password": password}),
+          )
+          .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
     } catch (_) {
@@ -157,6 +159,7 @@ class Api {
     required String alamat,
     required String tanggalPengerjaan,
     required int hargaPerHari,
+    required String metodePembayaran,
   }) async {
     try {
       final headers = await _authHeaders();
@@ -170,12 +173,39 @@ class Api {
           "alamat": alamat,
           "tanggal_pengerjaan": tanggalPengerjaan,
           "harga_per_hari": hargaPerHari,
+          "metode_pembayaran": metodePembayaran,
         }),
       );
 
       return _handleResponse(response);
-    } catch (e) {
-      return {"status": "error", "message": e.toString()};
+    } catch (_) {
+      return _error("Gagal membuat pesanan");
+    }
+  }
+
+  static Future<Map<String, dynamic>> uploadBuktiPembayaran({
+    required int pesananId,
+    required File file,
+  }) async {
+    try {
+      final headers = await _authHeaders();
+
+      final request = http.MultipartRequest(
+        "POST",
+        Uri.parse("$baseUrl/api/pesanan/upload-bukti/$pesananId"),
+      );
+
+      request.headers.addAll(headers);
+      request.files.add(
+        await http.MultipartFile.fromPath("bukti_pembayaran", file.path),
+      );
+
+      final response = await request.send();
+      final body = await response.stream.bytesToString();
+
+      return jsonDecode(body);
+    } catch (_) {
+      return {"status": "error", "message": "Gagal upload bukti pembayaran"};
     }
   }
 
@@ -201,6 +231,7 @@ class Api {
   // REVIEW
   // =================================================
   static Future<Map<String, dynamic>> kirimReview({
+    required int pesananId,
     required int tukangId,
     required String reviewText,
     required int rating,
@@ -212,6 +243,7 @@ class Api {
         Uri.parse("$baseUrl/api/review"),
         headers: headers,
         body: jsonEncode({
+          "pesanan_id": pesananId,
           "tukang_id": tukangId,
           "review_text": reviewText,
           "rating": rating,
@@ -220,67 +252,10 @@ class Api {
 
       return _handleResponse(response);
     } catch (_) {
-      return _error("Gagal kirim review");
+      return _error("Gagal mengirim review");
     }
   }
 
-  // =================================================
-  // UPDATE RATING & ULASAN PESANAN
-  // =================================================
-  static Future<Map<String, dynamic>> updateRatingUlasan({
-    required int orderId,
-    required double rating,
-    required String ulasan,
-  }) async {
-    try {
-      final headers = await _authHeaders();
-
-      final response = await http.put(
-        Uri.parse("$baseUrl/api/pesanan/$orderId/rating"),
-        headers: headers,
-        body: jsonEncode({"rating": rating, "ulasan": ulasan}),
-      );
-
-      // Beberapa backend mengembalikan 204 / body kosong atau teks biasa (bukan JSON)
-      // Saat itu, jsonDecode akan gagal dan sebelumnya memunculkan "Response bukan JSON".
-      // Di sini kita anggap 2xx dengan body non-JSON sebagai sukses.
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (response.body.isEmpty) {
-          return {
-            "status": "success",
-            "message": "Rating & ulasan berhasil dikirim",
-          };
-        }
-
-        try {
-          // Coba parse JSON jika memang JSON
-          final decoded = jsonDecode(response.body);
-          return decoded is Map<String, dynamic>
-              ? decoded
-              : {
-                  "status": "success",
-                  "message": "Rating & ulasan berhasil dikirim",
-                };
-        } catch (_) {
-          // Bukan JSON tapi status sukses -> anggap berhasil
-          return {
-            "status": "success",
-            "message": "Rating & ulasan berhasil dikirim",
-          };
-        }
-      }
-
-      // Jika status bukan 2xx, jangan pakai _handleResponse (yang bisa balas "Response bukan JSON")
-      // tapi kembalikan info yang lebih jelas dari backend.
-      return {
-        "status": "error",
-        "message":
-            "HTTP ${response.statusCode}: ${response.body.isEmpty ? 'Tidak ada pesan dari server' : response.body}",
-      };
-    } catch (e) {
-      return _error("Gagal update rating & ulasan: ${e.toString()}");
-    }
-  }
   static Future<Map<String, dynamic>> getTukangProfilePublic({
     required int idTukang,
     required String token,
@@ -288,10 +263,7 @@ class Api {
     try {
       final response = await http.get(
         Uri.parse("$baseUrl/api/tukang/$idTukang"),
-        headers: {
-          ..._jsonHeaders,
-          "Authorization": "Bearer $token",
-        },
+        headers: {..._jsonHeaders, "Authorization": "Bearer $token"},
       );
       return _handleResponse(response);
     } catch (_) {
@@ -311,62 +283,90 @@ class Api {
       return _error("Gagal mengambil daftar chat");
     }
   }
+
   // =================================================
-// CHAT
-// =================================================
-static Future<Map<String, dynamic>> getChat(int pesananId) async {
-  try {
+  // CHAT
+  // =================================================
+  static Future<Map<String, dynamic>> getChat(int pesananId) async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.get(
+        Uri.parse("$baseUrl/api/chat/$pesananId"),
+        headers: headers,
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return _error("Gagal memuat chat");
+    }
+  }
+
+  static Future<Map<String, dynamic>> sendChat({
+    required int pesananId,
+    required String message,
+  }) async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.post(
+        Uri.parse("$baseUrl/api/chat"),
+        headers: headers,
+        body: jsonEncode({"pesanan_id": pesananId, "message": message}),
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      return _error("Gagal mengirim pesan");
+    }
+  }
+
+  static Future<Map<String, dynamic>> getNotifikasi() async {
     final headers = await _authHeaders();
     final response = await http.get(
-      Uri.parse("$baseUrl/api/chat/$pesananId"),
+      Uri.parse("$baseUrl/api/notifikasi"),
       headers: headers,
     );
     return _handleResponse(response);
-  } catch (e) {
-    return _error("Gagal memuat chat");
   }
-}
 
-static Future<Map<String, dynamic>> sendChat({
-  required int pesananId,
-  required String message,
-}) async {
-  try {
-    final headers = await _authHeaders();
-    final response = await http.post(
-      Uri.parse("$baseUrl/api/chat"),
-      headers: headers,
-      body: jsonEncode({
-        "pesanan_id": pesananId,
-        "message": message,
-      }),
-    );
-    return _handleResponse(response);
-  } catch (e) {
-    return _error("Gagal mengirim pesan");
+  // ================= CHECK TOKEN =================
+  static Future<bool> checkToken() async {
+    try {
+      final headers = await _authHeaders();
+      final response = await http.get(
+        Uri.parse("$baseUrl/api/auth/check"),
+        headers: headers,
+      );
+
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
-}
-static Future<Map<String, dynamic>> getNotifikasi() async {
-  final headers = await _authHeaders();
-  final response = await http.get(
-    Uri.parse("$baseUrl/api/notifikasi"),
-    headers: headers,
-  );
-  return _handleResponse(response);
-}
-// ================= CHECK TOKEN =================
-static Future<bool> checkToken() async {
-  try {
-    final headers = await _authHeaders();
-    final response = await http.get(
-      Uri.parse("$baseUrl/api/auth/check"),
-      headers: headers,
-    );
 
-    return response.statusCode == 200;
-  } catch (_) {
-    return false;
+  // =================================================
+  // CHATBOT (HUGGING FACE)
+  // =================================================
+  static Future<Map<String, dynamic>> sendChatbot({
+    required String query,
+  }) async {
+    try {
+      final headers = await _authHeaders();
+
+      final response = await http
+          .post(
+            Uri.parse("$baseUrl/api/chatbot"),
+            headers: headers,
+            body: jsonEncode({"query": query}),
+          )
+          .timeout(timeoutDuration);
+
+      return _handleResponse(response);
+    } on SocketException {
+      return _error("Tidak ada koneksi internet");
+    } on HttpException {
+      return _error("Server error");
+    } on FormatException {
+      return _error("Format response salah");
+    } catch (_) {
+      return _error("Chatbot gagal merespons");
+    }
   }
-}
-
 }

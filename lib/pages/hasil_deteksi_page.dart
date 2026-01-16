@@ -19,32 +19,39 @@ class HasilDeteksiPage extends StatelessWidget {
     required this.confidence,
   });
 
-  // ======================
-  // ANALISIS FAKTOR (LOWERCASE)
-  // ======================
+  // =====================================================
+  // CONFIDENCE THRESHOLD (PENCEGAHAN GAMBAR NGASAL)
+  // =====================================================
+  bool isValidDetection(double confidence) {
+    return confidence >= 0.3; // 30%
+  }
+
+  // =====================================================
+  // ANALISIS FAKTOR (UI ONLY)
+  // =====================================================
   String _analisisFaktor(String label) {
     final map = {
       "tembok retak":
-          "Kerusakan terjadi karena fondasi mengalami penurunan tidak merata, getaran berulang, atau tekanan beban berlebih pada struktur dinding.",
+          "Kerusakan terjadi karena penurunan fondasi, getaran berulang, atau tekanan beban berlebih pada struktur dinding.",
       "plafon bocor":
-          "Kerusakan plafon biasanya disebabkan oleh kebocoran atap, rembesan air AC, atau material plafon yang sudah rapuh dan tidak mampu menahan beban.",
+          "Kerusakan plafon biasanya disebabkan oleh kebocoran atap, rembesan air, atau material plafon yang sudah rapuh.",
       "kramik pecah":
-          "Keramik retak atau terangkat dapat terjadi akibat permukaan lantai yang tidak rata, penurunan tanah, atau pemasangan awal yang kurang tepat.",
+          "Keramik rusak dapat terjadi akibat permukaan lantai tidak rata atau pemasangan yang kurang tepat.",
       "cat ngelupas":
-          "Cat mengelupas umumnya dipicu oleh kelembaban tinggi, rembesan air, atau permukaan dinding yang tidak dibersihkan dengan baik sebelum pengecatan.",
+          "Cat mengelupas dipicu oleh kelembaban tinggi atau permukaan dinding yang tidak siap saat pengecatan.",
       "kayu kusen lapuk":
-          "Kusen kayu dapat lapuk karena paparan air, kelembaban tinggi, atau serangan jamur dan rayap, sehingga kayu kehilangan kekuatan strukturalnya.",
+          "Kusen kayu lapuk akibat paparan air, jamur, atau serangan rayap.",
       "dinding berjamur":
-          "Dinding berjamur terjadi akibat kelembaban berlebih, ventilasi yang buruk, atau rembesan air yang terus-menerus.",
+          "Jamur muncul akibat ventilasi buruk dan kelembaban berlebih.",
     };
 
     return map[label.toLowerCase()] ??
-        "Kerusakan terdeteksi pada bangunan dan memerlukan pemeriksaan lebih lanjut.";
+        "Kerusakan terdeteksi dan memerlukan pemeriksaan lebih lanjut.";
   }
 
-  // ======================
-  // MAP KE LABEL BACKEND (WAJIB)
-  // ======================
+  // =====================================================
+  // MAPPING KE LABEL BACKEND
+  // =====================================================
   String mapToBackendLabel(String label) {
     final map = {
       "tembok retak": "Retak Dinding",
@@ -60,6 +67,8 @@ class HasilDeteksiPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool valid = isValidDetection(confidence);
+
     final imageWidget = kIsWeb
         ? Image.memory(
             webImage!,
@@ -85,27 +94,54 @@ class HasilDeteksiPage extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: imageWidget,
-                  ),
-                  const SizedBox(height: 20),
-                  _infoBox("Jenis Kerusakan", hasilLabel),
-                  const SizedBox(height: 16),
-                  _analisisBox(_analisisFaktor(hasilLabel)),
-                ],
-              ),
+              child: valid
+                  ? Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: imageWidget,
+                        ),
+                        const SizedBox(height: 20),
+                        _infoBox("Jenis Kerusakan", hasilLabel),
+                        const SizedBox(height: 16),
+                        _analisisBox(_analisisFaktor(hasilLabel)),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: imageWidget,
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: _boxDecoration(),
+                          child: const Text(
+                            "Gambar tidak dapat dikenali sebagai kerusakan bangunan.\n\n"
+                            "Pastikan foto menampilkan bagian rumah yang rusak, "
+                            "pencahayaan cukup, dan fokus pada area kerusakan.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14, height: 1.6),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
-          _rekomendasiButton(context),
+
+          // TOMBOL REKOMENDASI HANYA MUNCUL JIKA VALID
+          if (valid) _rekomendasiButton(context),
         ],
       ),
       bottomNavigationBar: const BottomNav(currentIndex: 2),
     );
   }
 
+  // =====================================================
+  // UI COMPONENTS
+  // =====================================================
   Widget _infoBox(String title, String value) {
     return Container(
       width: double.infinity,
@@ -113,9 +149,16 @@ class HasilDeteksiPage extends StatelessWidget {
       decoration: _boxDecoration(),
       child: Column(
         children: [
-          Text(title, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+          Text(
+            title,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          ),
           const SizedBox(height: 6),
-          Text(value, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );
@@ -126,7 +169,11 @@ class HasilDeteksiPage extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: _boxDecoration(),
-      child: Text(text, style: const TextStyle(fontSize: 14, height: 1.6), textAlign: TextAlign.justify),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 14, height: 1.6),
+        textAlign: TextAlign.justify,
+      ),
     );
   }
 
@@ -135,7 +182,7 @@ class HasilDeteksiPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha((0.05 * 255).toInt()),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -167,7 +214,11 @@ class HasilDeteksiPage extends StatelessWidget {
             ),
             child: const Text(
               'Lihat Rekomendasi',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),

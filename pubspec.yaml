@@ -9,22 +9,27 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-    
+
   # UI & Image
   cupertino_icons: ^1.0.8
   image_picker: ^1.1.2
   image: ^4.0.17
   cached_network_image: ^3.3.1
-  # AI Detection - Versi GitHub yang fix
+
+  # AI Detection
   tflite_flutter:
     git:
       url: https://github.com/tensorflow/flutter-tflite.git
       ref: main
+
+  # Core
+  http: ^1.2.0
   shared_preferences: ^2.5.4
   google_sign_in: ^6.2.1
-  http: ^1.2.0
-  flutter_secure_storage: ^9.0.0
+  
   socket_io_client: ^2.0.3+1
+  intl: ^0.19.0
+  dio: ^5.4.0
 
 flutter:
   uses-material-design: true

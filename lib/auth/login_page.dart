@@ -99,19 +99,19 @@ class _LoginPageState extends State<LoginPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', true);
     await prefs.setInt('userId', user['id_users']);
-    await prefs.setString('username', user['username']);
-    await prefs.setString('email', user['email']);
+    await prefs.setString('username', user['username'] ?? '');
+    await prefs.setString('email', user['email'] ?? '');
     await prefs.setString('role', user['role']);
     await prefs.setString('jwt', token);
 
     if (!mounted) return;
 
+    // setState(() => isLoading = false);
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const HomePage()),
     );
-
-    setState(() => isLoading = false);
   }
 
   void _handleLoginFailure() {

@@ -13,9 +13,15 @@ class ProfilTukangPage extends StatefulWidget {
 
 class _ProfilTukangPageState extends State<ProfilTukangPage> {
   bool isLoading = true;
+  bool isLoadingReview = false;
   String errorMessage = "";
+
   Map<String, dynamic>? tukang;
   List<dynamic> ulasan = [];
+
+  int page = 1;
+  final int limit = 5;
+  bool hasMore = true;
 
   @override
   void initState() {
@@ -58,10 +64,22 @@ class _ProfilTukangPageState extends State<ProfilTukangPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        errorMessage = "Terjadi kesalahan: $e";
+        errorMessage = "Terjadi kesalahan";
         isLoading = false;
       });
     }
+  }
+
+  String _sentimentLabel(String value) {
+    if (value == "positif") return "Ulasan Positif";
+    if (value == "negatif") return "Ulasan Negatif";
+    return "Netral";
+  }
+
+  Color _sentimentColor(String value) {
+    if (value == "positif") return Colors.green;
+    if (value == "negatif") return Colors.red;
+    return Colors.grey;
   }
 
   @override
@@ -78,12 +96,7 @@ class _ProfilTukangPageState extends State<ProfilTukangPage> {
           title: const Text("Profil Tukang"),
           backgroundColor: Colors.orange,
         ),
-        body: Center(
-          child: Text(
-            errorMessage,
-            textAlign: TextAlign.center,
-          ),
-        ),
+        body: Center(child: Text(errorMessage)),
       );
     }
 
@@ -98,80 +111,11 @@ class _ProfilTukangPageState extends State<ProfilTukangPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER PROFIL
-            Center(
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 48,
-                    backgroundImage: tukang!["foto"] != null &&
-                            tukang!["foto"].toString().isNotEmpty
-                        ? NetworkImage(tukang!["foto"])
-                        : null,
-                    child: tukang!["foto"] == null ||
-                            tukang!["foto"].toString().isEmpty
-                        ? const Icon(Icons.person, size: 48)
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    tukang!["nama"],
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.star,
-                          color: Colors.amber, size: 18),
-                      const SizedBox(width: 4),
-                      Text(
-                        tukang!["rating"].toString(),
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        "(${tukang!["jumlah_ulasan"]} ulasan)",
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
+            _header(),
             const SizedBox(height: 24),
-
-            // KEAHLIAN
-            const Text(
-              "Keahlian",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              tukang!["keahlian"],
-              style: const TextStyle(color: Colors.black87),
-            ),
-
-            const SizedBox(height: 16),
-
-            // PENGALAMAN
-            const Text(
-              "Pengalaman",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              tukang!["pengalaman"] ?? "-",
-              style: const TextStyle(color: Colors.black87),
-            ),
-
+            _section("Keahlian", tukang!["keahlian"]),
+            _section("Pengalaman", tukang!["pengalaman"] ?? "-"),
             const SizedBox(height: 24),
-
-            // ULASAN
             const Text(
               "Ulasan Customer",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -179,55 +123,96 @@ class _ProfilTukangPageState extends State<ProfilTukangPage> {
             const SizedBox(height: 12),
 
             if (ulasan.isEmpty)
-              const Text(
-                "Belum ada ulasan",
-                style: TextStyle(color: Colors.grey),
-              ),
+              const Text("Belum ada ulasan", style: TextStyle(color: Colors.grey)),
 
-            ...ulasan.map((u) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.star,
-                            color: Colors.amber, size: 16),
-                        const SizedBox(width: 4),
-                        Text(u["rating"].toString()),
-                        const Spacer(),
-                        Text(
-                          u["sentiment"] ?? "",
-                          style: TextStyle(
-                            color: u["sentiment"] == "positif"
-                                ? Colors.green
-                                : Colors.red,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(u["review_text"]),
-                  ],
-                ),
-              );
-            }).toList(),
+            ...ulasan.map(_reviewCard).toList(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _header() {
+    return Center(
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 48,
+            backgroundImage: tukang!["foto"] != null &&
+                    tukang!["foto"].toString().isNotEmpty
+                ? NetworkImage(tukang!["foto"])
+                : null,
+            child: tukang!["foto"] == null ||
+                    tukang!["foto"].toString().isEmpty
+                ? const Icon(Icons.person, size: 48)
+                : null,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            tukang!["nama"],
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.star, color: Colors.amber, size: 18),
+              const SizedBox(width: 4),
+              Text(tukang!["rating"].toString()),
+              const SizedBox(width: 6),
+              Text(
+                "(${tukang!["jumlah_ulasan"]} ulasan)",
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _section(String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        Text(content),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _reviewCard(dynamic u) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.star, color: Colors.amber, size: 16),
+              const SizedBox(width: 4),
+              Text(u["rating"].toString()),
+              const Spacer(),
+              Text(
+                _sentimentLabel(u["sentiment"]),
+                style: TextStyle(
+                  color: _sentimentColor(u["sentiment"]),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(u["review_text"]),
+        ],
       ),
     );
   }

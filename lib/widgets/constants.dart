@@ -29,10 +29,7 @@ class AppTextStyles {
     color: AppColors.primary,
   );
 
-  static const TextStyle cardDesc = TextStyle(
-    fontSize: 12.5,
-    height: 1.4,
-  );
+  static const TextStyle cardDesc = TextStyle(fontSize: 12.5, height: 1.4);
 
   static const TextStyle buttonText = TextStyle(
     color: AppColors.primary,
