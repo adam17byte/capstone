@@ -139,13 +139,14 @@ class _ProfilTukangPageState extends State<ProfilTukangPage> {
           CircleAvatar(
             radius: 48,
             backgroundImage: tukang!["foto"] != null &&
-                    tukang!["foto"].toString().isNotEmpty
-                ? NetworkImage(tukang!["foto"])
-                : null,
+                tukang!["foto"].toString().isNotEmpty &&
+                tukang!["foto"].toString().startsWith('http')
+              ? NetworkImage(tukang!["foto"])
+              : const AssetImage('assets/images/logo_temantukang.png') as ImageProvider,
             child: tukang!["foto"] == null ||
-                    tukang!["foto"].toString().isEmpty
-                ? const Icon(Icons.person, size: 48)
-                : null,
+                tukang!["foto"].toString().isEmpty
+              ? const Icon(Icons.person, size: 48)
+              : null,
           ),
           const SizedBox(height: 12),
           Text(

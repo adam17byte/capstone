@@ -165,11 +165,11 @@ class _RekomendasiPageState extends State<RekomendasiPage> {
             },
             child: CircleAvatar(
               radius: 30,
-              backgroundImage: tukang.foto.isNotEmpty
+                backgroundImage: tukang.foto.isNotEmpty && tukang.foto.startsWith('http')
                   ? NetworkImage(tukang.foto)
-                  : null,
-              onBackgroundImageError: (_, __) {},
-              child: tukang.foto.isEmpty
+                  : const AssetImage('assets/images/logo_temantukang.png') as ImageProvider,
+                onBackgroundImageError: (_, __) {},
+                child: tukang.foto.isEmpty
                   ? const Icon(Icons.person, size: 30)
                   : null,
             ),

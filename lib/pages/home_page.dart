@@ -61,9 +61,7 @@ class _HomePageState extends State<HomePage> {
                         width: double.infinity,
                         decoration: const BoxDecoration(
                           image: DecorationImage(
-                            image: NetworkImage(
-                              'https://assets.promediateknologi.id/crop/0x0:0x0/750x500/webp/photo/2023/02/11/969053708.jpeg',
-                            ),
+                            image: AssetImage('assets/images/969053708.jpg'),
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -201,8 +199,8 @@ class _HomePageState extends State<HomePage> {
               MaterialPageRoute(builder: (_) => const ChatbotPage()),
             );
           },
-          child: Image.network(
-            'https://cdn-icons-png.flaticon.com/128/15511/15511514.png',
+          child: Image.asset(
+            'assets/images/cb.png',
             width: 28,
             height: 28,
             color: Colors.white,
